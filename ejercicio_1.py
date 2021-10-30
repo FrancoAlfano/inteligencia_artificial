@@ -13,7 +13,7 @@ url ="https://api.twitter.com/2/tweets/search/recent"
 params = {
     'query': '#NLP @kdnuggets -is:retweet',
     'tweet.fields': 'created_at',
-    'max_results': 100
+    'max_results': 50
 }
 
 headers = {

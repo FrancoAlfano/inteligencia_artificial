@@ -47,19 +47,18 @@ tt = TweetTokenizer()
 tokenized_text = df['text'].apply(tt.tokenize)
 df["tokenized_text"] = tokenized_text
 
+print(tokenized_text.to_string())
+
 # Instanciar Analizador
 sentiment_analyzer = SentimentIntensityAnalyzer()
 # Analizar polaridad de la oración
-analisis = sentiment_analyzer.polarity_scores(df['text'])
-print(analisis)
-
 df["negative"] = ""
 df["neutral"] = ""
 df["positive"] = ""
 df["result"] = ""
 for index, row in df.iterrows():
     #Analizar cada review
-    analisis = sentiment_analyzer.polarity_scores(row['tokenized_text'])
+    analisis = sentiment_analyzer.polarity_scores(tokenized_text.to_string())
     row["negative"] = analisis["neg"]
     row["neutral"] = analisis["neu"]
     row["positive"] = analisis["pos"]
@@ -70,3 +69,8 @@ for index, row in df.iterrows():
         row["result"] = "Negative"
     else :
         row["result"] = "Neutral"
+
+print(f'Negative= {row["negative"]}')
+print(f'Neutral= {row["neutral"]}')
+print(f'Positive= {row["positive"]}')
+print(f'Result= {row["result"]}')

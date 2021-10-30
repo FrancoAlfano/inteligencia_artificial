@@ -33,6 +33,8 @@ df_fdist.columns = ['Frequency']
 df_fdist.index.name = 'Term'
 df_fdist.sort_values(by=['Frequency'], inplace=True)
 
+print(df_fdist)
+
 # Generar nube de palabras
 wordcloud = WordCloud(max_words=100, background_color="white").generate(df['tokenized_text'].to_string())
 # Mostrar gráfico
