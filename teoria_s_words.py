@@ -8,7 +8,7 @@ stop_words = set(stopwords.words('english'))
 
 # Aplicar Tokenizer
 tokenized_text = word_tokenize(example)
-print(tokenized_text) 
+#print(tokenized_text) 
 
 example_no_stopwords = [x for x in tokenized_text if not x.lower() in stop_words]
-print(example_no_stopwords)
+#print(example_no_stopwords)

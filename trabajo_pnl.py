@@ -12,19 +12,46 @@ import matplotlib.pyplot as plt
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer 
 from nltk.corpus import stopwords
 import re
+import statistics
+from decimal import Decimal as D
+
 
 load_dotenv()
+
+def get_data(url,params):
+    results = []
+
+    for _ in range(5):
+        response = requests.get(url, headers=headers, params=params)
+        # Generar excepción si la respuesta no es exitosa
+        if response.status_code != 200:
+            raise Exception(response.status_code, response.text)
+        data = response.json()['data']
+        meta_data = dict(response.json())['meta']
+        results.append(pd.json_normalize(data))
+        if 'next_token' not in meta_data:
+            break
+        else:
+            token = meta_data['next_token']
+            params = {
+                'query': '#pathofexile -is:retweet lang:en',
+                'start_time': "2021-10-28T00:00:00Z",
+                'end_time': '2021-10-28T23:00:00Z',
+                'next_token':token,
+                'max_results':50
+            }
+    return pd.concat(results)
 
 bearer_token = os.environ.get("Bearer")
 
 url ="https://api.twitter.com/2/tweets/search/recent"
 
 params = {
-    'query': '#pathofexile OR #poe -is:retweet lang:en',
-    'start_time': "2021-10-27T00:00:00Z",
-    'end_time': '2021-10-28T00:00:00Z',
-    'tweet.fields': 'created_at',
-    'max_results': 100
+    'query': '#pathofexile -is:retweet lang:en',
+    'start_time': "2021-10-28T00:00:00Z",
+    'end_time': '2021-10-28T23:00:00Z',
+    #'tweet.fields': 'created_at',
+    'max_results': 50
 }
 
 headers = {
@@ -35,13 +62,16 @@ headers = {
 rm_urls = r'(http|ftp|https):\/\/[\w\-_]+(\.[\w\-_]+)+([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?'
 rm_hash = r'#'
 #rm_usr_mention = r'\B\@([\w\-]+)'
+rm_usr_mention = r'@'
 
-response = requests.get(url, headers=headers, params=params)
-df = pd.json_normalize(response.json()['data'])
+#response = requests.get(url, headers=headers, params=params)
+#df = pd.json_normalize(response.json()['data'])
+
+df = get_data(url, params)
 
 df['text'] = df['text'].str.replace(rm_urls, '', regex=True)
 df['text'] = df['text'].str.replace(rm_hash, '', regex=True)
-#df['text'] = df['text'].str.replace(rm_usr_mention, '', regex=True)
+df['text'] = df['text'].str.replace(rm_usr_mention, '', regex=True)
 df['text'] = df['text'].str.lower()
 
 tt = TweetTokenizer()
@@ -51,14 +81,14 @@ tokenized_text = df['text'].apply(tt.tokenize)
 df["tokenized_text"] = tokenized_text
 
 stop_words = set(stopwords.words('english'))
-#new_stopwords = ['poe', 'pathofexile', 'game']
-#new_stopwords_list = stop_words.union(new_stopwords)
+new_stopwords = ['play', 'pathofexile', 'game', 'stream', 'live', 'twitch']
+new_stopwords_list = stop_words.union(new_stopwords)
 
 all_tweets = []
 for text in df["tokenized_text"]:
     all_tweets += text
-    
-cleaned_stop_words = [x for x in all_tweets if not x in stop_words]
+
+cleaned_stop_words = [x for x in all_tweets if not x in new_stopwords]
 
 text_pos = pos_tag(cleaned_stop_words)
 #N* -> N
@@ -86,17 +116,24 @@ lemmatized = []
 for word, simbol in taged_OK:
     lemmatized.append(wordnet_lemmatizer.lemmatize(word, simbol.lower()))
 
+
 # Instanciar Analizador
 sentiment_analyzer = SentimentIntensityAnalyzer()
 df["negative"] = ""
 df["neutral"] = ""
 df["positive"] = ""
 df["result"] = ""
+negatives = []
+neutrals = []
+positives = []
 for index, row in df.iterrows():
-    analisis = sentiment_analyzer.polarity_scores(df['tokenized_text'].to_string())
+    analisis = sentiment_analyzer.polarity_scores(row['text'])
     row["negative"] = analisis["neg"]
+    negatives.append(row['negative'])
     row["neutral"] = analisis["neu"]
+    neutrals.append(row['neutral'])
     row["positive"] = analisis["pos"]
+    positives.append(row['positive'])
     # Evaluar que valores se considerarán positivo o negativo
     if analisis['compound'] > 0.6 :
         row["result"] = "Positive"
@@ -105,10 +142,10 @@ for index, row in df.iterrows():
     else :
         row["result"] = "Neutral"
 
-print(f'Negative= {row["negative"]}')
-print(f'Neutral= {row["neutral"]}')
-print(f'Positive= {row["positive"]}')
-print(f'Result= {row["result"]}')
+
+print(f'Negative= {statistics.mean(negatives)}')
+print(f'Neutral= {statistics.mean(neutrals)}')
+print(f'Positive= {statistics.mean(positives)}')
 
 fdist = FreqDist(lemmatized)
 
