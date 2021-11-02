@@ -32,9 +32,11 @@ def get_data(url,params):
         else:
             token = meta_data['next_token']
             params = {
-                #'query': 'from:pathofexile -is:retweet lang:en',
                 'query': 'to:pathofexile OR @pathofexile -is:retweet lang:en',
-                #'start_time': "2021-10-25T00:00:00Z",
+                #'query': '#pathofexile OR #poe @zizaran OR @Steelmage2 OR @MathilExists -is:retweet lang:en',
+                #'query': 'from:pathofexile -is:retweet lang:en',
+                #'query': '@bexsayswords -is:retweet lang:en',
+                #'start_time': "2021-10-26T00:00:00Z",
                 #'end_time': '2021-10-30T00:00:00Z',
                 'next_token':token,
                 'max_results':50
@@ -45,11 +47,12 @@ bearer_token = os.environ.get("Bearer")
 url ="https://api.twitter.com/2/tweets/search/recent"
 
 params = {
-    #'query': 'from:pathofexile -is:retweet lang:en',
     'query': 'to:pathofexile OR @pathofexile -is:retweet lang:en',
-    #'start_time': "2021-10-25T00:00:00Z",
+    #'query': '#pathofexile OR #poe @zizaran OR @Steelmage2 OR @MathilExists -is:retweet lang:en',
+    #'query': 'from:pathofexile -is:retweet lang:en',
+    #'query': '@bexsayswords -is:retweet lang:en',
+    #'start_time': "2021-10-26T00:00:00Z",
     #'end_time': '2021-10-30T00:00:00Z',
-    #'tweet.fields': 'created_at',
     'max_results': 50
 }
 
@@ -88,6 +91,7 @@ for row in df["tokenized_text"]:
         if tag == "JJR" or tag == "JJS" or tag == "JJ":
             tagged_ok.append((word, 'A'))
 
+#Aplicar Lemmatizacion
 wordnet_lemmatizer = WordNetLemmatizer()
 lemmatized = []
 for word, simbol in tagged_ok:
@@ -99,28 +103,29 @@ df["negative"] = ""
 df["neutral"] = ""
 df["positive"] = ""
 df["result"] = ""
-negatives = []
-neutrals = []
-positives = []
+negatives = 0
+neutrals = 0
+positives = 0
+
 for index, row in df.iterrows():
     analisis = sentiment_analyzer.polarity_scores(row['text'])
     row["negative"] = analisis["neg"]
-    negatives.append(row['negative'])
     row["neutral"] = analisis["neu"]
-    neutrals.append(row['neutral'])
     row["positive"] = analisis["pos"]
-    positives.append(row['positive'])
     # Evaluar que valores se considerarán positivo o negativo
     if analisis['compound'] > 0.6 :
         row["result"] = "Positive"
-    elif analisis['compound'] <  0.6:
+        positives += 1
+    elif analisis['compound'] < 0.3:
         row["result"] = "Negative"
+        negatives += 1
     else :
         row["result"] = "Neutral"
+        neutrals += 1
 
-print(f'Negative= {statistics.mean(negatives)}')
-print(f'Neutral= {statistics.mean(neutrals)}')
-print(f'Positive= {statistics.mean(positives)}')
+print(f"Positives= {positives}")
+print(f"Neutrals= {neutrals}")
+print(f"Negatives= {negatives}")
 
 
 #Frecuencia de las palabras
@@ -130,7 +135,6 @@ df_fdist.columns = ['Frequency']
 df_fdist.index.name = 'Term'
 df_fdist.sort_values(by=['Frequency'], inplace=True)
 print(df_fdist)
-
 all_tweets = []
 for text in df["tokenized_text"]:
     all_tweets += text
